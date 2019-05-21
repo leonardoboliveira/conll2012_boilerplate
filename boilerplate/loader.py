@@ -1,16 +1,42 @@
+import numpy as np
+from . import mentions
+
+
 def file_to_struct(path):
-    pass
+    with open(path, 'r') as f:
+        train_file = f.readlines()
+        pairs = mentions.get_mention_pairs(train_file)
+        doc_dict = document_dictionary(train_file)
+        input_vector = make_input_vector(pairs, doc_dict)
+        output_vector = make_output_vector(pairs)
+    return input_vector, output_vector
 
 
-def get_documents(train_file):
+def document_dictionary(documents):
     """
-    For more information about conn files, see http://conll.cemantix.org/2012/data.html
+    Transforms the list of lists into a dictionary with a increasing id and the full text of the document
+    :param documents: list of list of sentences (outer list is the document, inner list are the sentences)
+    :return: dicionary {id: text}
+    """
+    full_doc = ''
+    doc_no = 0
+    output = {}
+    for doc in documents:
+        for sentence in doc:
+            full_doc += sentence
+        output[doc_no] = full_doc
+        full_doc = ''
+        doc_no += 1
+    return output
 
-    :param train_file: conll file name
-    :return: list of all sentences in the document inside the file
+
+def get_documents(train_list):
+    """
+    :param train_list: list of all lines in the conll file (raw info)
+    :return: list of list of sentences. Each outer list represents a document, each inner list is a sentence in the
+            document. The file may contain more than one document.
 
     """
-    train_list = train_file_to_list(train_file)  # transforming file to lines
     document = []
     part = []
     sentence = ''
