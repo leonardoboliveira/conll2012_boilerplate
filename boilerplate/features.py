@@ -56,15 +56,6 @@ class FeatureMapper:
             doc_avg.append(self.get_average_vector(self.doc_dict[d].split()))
         return doc_avg
 
-    def document_dictionary(self, train_file):
-        """
-        Transforms the list lines of the file into a dictionary with document and text
-        :param train_file: list of lines in the document
-        :return: dicionary {id: text}
-        """
-        documents = get_documents(train_file)
-        return self.merge_document_text(documents)
-
     @staticmethod
     def make_output_vector(pairs):
         """
@@ -239,3 +230,13 @@ def get_pair_features(feature_list):
         (mention_dist, s_dist, overlap, speaker, head_match, mention_exact_match, mention_partial_match))
 
     return pair_features
+
+
+def document_dictionary(train_file):
+    """
+    Transforms the list lines of the file into a dictionary with document and text
+    :param train_file: list of lines in the document
+    :return: dicionary {id: text}
+    """
+    documents = get_documents(train_file)
+    return merge_document_text(documents)
