@@ -14,18 +14,35 @@ CONLL_SPEAKER_COLUMN = 9
 CONLL_NAMED_COLUMN = 10
 
 
-def check_usable_pairs(mention_info, i, j):
+class Mention:
+    def __init__(self, m_id, words):
+        self.words = words
+        self.mention_id = m_id
+        self.doc_id = m_id.split('_')[0]
+        self.mention = " ".join(words)
+        self.first_word = words[0]
+        self.last_word = words[-1]
+
+
+class MentionPair:
+    def __init__(self, mention1, mention2):
+        self.mention1 = mention1
+        self.mention2 = mention2
+        self.coref = mention1.mention_id == mention2.mention_id
+
+
+def check_usable_pairs(mention_list, i, j):
     """
     Default implementation for checking if two mentions should be considered as a pair. These pairs are not necessarily
     correferences
-    :param mention_info: list of mentions
+    :param mention_list: list of mentions
     :param i: first index
     :param j: second index
     :return: True if mention i and mention j should be paired
     """
-    if mention_info[i]['id'].split('_')[0] != mention_info[j]['id'].split('_')[0]:
+    if mention_list[i].doc_id != mention_list[j].doc_id:
         return False
-    if mention_info[i]['id'] == mention_info[j]['id']:
+    if mention_list[i].mention_id == mention_list[j].mention_id:
         return True
     # Skipping some indexes so not all pairs will be generated
     if j % 2 == 0 or j % 3 == 0 or j % 5 == 0 or j % 7 == 0 or j % 11 == 0:
@@ -46,13 +63,12 @@ def get_mention_pairs(train_list, increment_mention_info=None, increment_mention
     :param use_pair: function to define if two mentions should be paired or not
     :return: list of objects
     """
-    mention_info = train_dictionary(train_list, increment_mention_info)
+    mention_list = build_mention_list(train_list, increment_mention_info)
     mention_pair_list = []
-    for i in range(1, len(mention_info)):
+    for i in range(1, len(mention_list)):
         for j in range(0, i):
-            if use_pair(mention_info, i, j):
-                pair = [mention_info[i], mention_info[j],
-                        {'coref': (mention_info[i]['id'] == mention_info[j]['id']) + 0}]
+            if use_pair(mention_list, i, j):
+                pair = MentionPair(mention_list[i], mention_list[j])
                 mention_pair_list.append(pair)
 
     mention_pair_list = get_sentence_dist(mention_pair_list, train_list, increment_mention_pair)
@@ -60,7 +76,7 @@ def get_mention_pairs(train_list, increment_mention_info=None, increment_mention
     return mention_pair_list
 
 
-def train_dictionary(train_list, fill_information=None):
+def build_mention_list(train_list, fill_information=None):
     """
     Build a list of dictionaries with the information about each mention. The mentions are not yet grouped
 
@@ -68,32 +84,31 @@ def train_dictionary(train_list, fill_information=None):
     :param fill_information: function to add more information into the cluster
     :return:
     """
-    mention_info = []
+    mentions = []
     cluster_start, start_pos, cluster_end, end_pos = get_mention(train_list)
     mention_cluster = create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos)
     for m in mention_cluster:
-        mention_dict = {}
-        mention_words = get_mention_words(train_list, m[1], m[2])
-        mention_dict['id'] = m[0]
-        mention_dict['mention_start'] = m[1]
-        mention_dict['mention_end'] = m[2]
-        mention_dict['mention'] = " ".join(mention_words)
-        mention_dict['first_word'] = mention_words[0]
-        mention_dict['last_word'] = mention_words[-1]
-        mention_dict['pre_words'] = get_preceding_words(train_list, m[1])
-        mention_dict['next_words'] = get_next_words(train_list, m[2])
-        mention_dict['mention_sentence'] = mention_sentence(train_list, m[1])
-        mention_dict['speaker'] = train_list[m[1] - 1].split()[CONLL_SPEAKER_COLUMN]
+        m_id, start_pos, end_pos = m
+
+        mention_words = get_mention_words(train_list, start_pos, end_pos)
+        mention = Mention(m_id, mention_words)
+
+        mention.mention_start = start_pos
+        mention.mention_end = end_pos
+        mention.pre_words = get_preceding_words(train_list, start_pos)
+        mention.next_words = get_next_words(train_list, end_pos)
+        mention.mention_sentence = mention_sentence(train_list, start_pos)
+        mention.speaker = train_list[start_pos - 1].split()[CONLL_SPEAKER_COLUMN]
 
         if fill_information:
-            fill_information(mention_dict, mention_words)
+            fill_information(mention)
 
-        mention_info.append(mention_dict)
+        mentions.append(mention)
 
-    mention_info = sorted(mention_info, key=lambda k: k['mention_start'])
-    mention_info = check_mention_contain(mention_info)
-    mention_info = get_index(mention_info)
-    return mention_info
+    mentions = sorted(mentions, key=lambda k: k.mention_start)
+    mentions = check_mention_contain(mentions)
+    mentions = get_index(mentions)
+    return mentions
 
 
 def get_sentence_dist(mention_pair_list, train_list, increment_mention_pair=None):
@@ -109,17 +124,17 @@ def get_sentence_dist(mention_pair_list, train_list, increment_mention_pair=None
     :param increment_mention_pair: function to add more information to each pair
     :return:
     """
-    for m in mention_pair_list:
-        m.append({'overlap': (m[1]['overlap'] == m[0]['id']) + 0})
-        m.append({'speaker': (m[1]['speaker'] == m[0]['speaker']) + 0})
-        m.append({'mention_exact_match': (m[1]['mention'] == m[0]['mention']) + 0})
+    for p in mention_pair_list:
+        p.overlap = p.mention1.overlap == p.mention2.mention_id
+        p.speaker = p.mention1.speaker == p.mention2.speaker
+        p.mention_exact_match = p.mention1.mention == p.mention2.mention
 
-        seq = difflib.SequenceMatcher(None, m[0]['mention'], m[1]['mention'])
+        seq = difflib.SequenceMatcher(None, p.mention1.mention, p.mention2.mention)
         score = seq.ratio()
-        m.append({'mention_partial_match': (score > 0.6) + 0})
+        p.mention_partial_match = score > 0.6
 
         if increment_mention_pair:
-            increment_mention_pair(m, train_list)
+            increment_mention_pair(p, train_list)
 
     return mention_pair_list
 
@@ -165,15 +180,14 @@ def create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos):
     Builds a list of mentions. One mention per item. The clusters are not yet grouped
      * First position is the id = [document_cluster]
      * Second position is the starting line
-     * Third position is the ending line (counting from
-    header). Use function get_mention to build the lists properly.
-
+     * Third position in the ending line (counting from header).
+     Use function get_mention to build the lists properly.
 
     :param cluster_start: List of IDs of starting cluster IDs (opening parenthesis)
     :param start_pos: List of positions for the starting cluster ID
     :param cluster_end: List of IDs for ending cluster (closing parenthesis)
     :param end_pos: List of positions for the ending cluster ID
-    :return: List with three items
+    :return: List with three items and length of the same size of the input lists
     """
     cluster_start_end_list = []
     for start, pos in zip(cluster_start, start_pos):  # Join ID and position
@@ -182,7 +196,7 @@ def create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos):
             if cluster_end[i] == start:
                 cluster.append(end_pos[i])  # Found it. Add to the pairing
                 break
-        del cluster_end[i]  # Remove from original list. Will not be used anymore
+        del cluster_end[i]  # Remove from original list. This will prevent from being used again
         del end_pos[i]
         cluster_start_end_list.append(cluster)
     return cluster_start_end_list
@@ -288,71 +302,73 @@ def mention_sentence(train_list, pos):
     return " ".join(sentence)
 
 
-def check_mention_contain(newlist):
+def check_mention_contain(mention_list):
     """
     Adds information about mentions containing/overlapping other mentions. The difference between contain and overlap
     will be defined by the end position. In this context, overlapping is not reflexive.
     The keys 'contained'/'overlap' will have the id of the container/overlapped mention or False if it is not contained
 
-    :param newlist: list of dictionaries, one item per mention. Each item must have the keys:
+    :param mention_list: list of dictionaries, one item per mention. Each item must have the keys:
         mention_start. mention_end and id
 
     :return: the modified list
     """
-    for i in range(0, len(newlist)):
-        start = newlist[i]['mention_start']
-        end = newlist[i]['mention_end']
-        for j in range(0, len(newlist)):
-            c_start = newlist[j]['mention_start']
-            c_end = newlist[j]['mention_end']
+    for i in range(0, len(mention_list)):
+        start = mention_list[i].mention_start
+        end = mention_list[i].mention_end
+
+        for j in range(0, len(mention_list)):
+            c_start = mention_list[j].mention_start
+            c_end = mention_list[j].mention_end
+
             if c_start == start and c_end == end:
                 continue
+
             if c_start >= start:  # If starts after the ref
                 if c_end <= end:  # and end before, it is contained by the ref
-                    newlist[j]['contained'] = newlist[i]['id']
+                    mention_list[j].contained = mention_list[i].mention_id
                 if c_start <= end:  # if starts before the end of the ref, only overlaps
-                    newlist[j]['overlap'] = newlist[i]['id']
+                    mention_list[j].overlap = mention_list[i].mention_id
 
-    for k in range(0, len(newlist)):  # Filling missing info
-        if 'contained' in newlist[k]:
-            continue
-        else:
-            newlist[k]['contained'] = False
-        if 'overlap' in newlist[k]:
-            continue
-        else:
-            newlist[k]['overlap'] = False
-    return newlist
+    for k in range(0, len(mention_list)):  # Filling missing info
+        if not hasattr(mention_list[k], 'contained'):
+            mention_list[k].contained = False
+        if not hasattr(mention_list[k], 'overlap'):
+            mention_list[k].overlap = False
+
+    return mention_list
 
 
-def get_index(mention_info):
+def get_index(mentions):
     """
     Adds the 'index' and 'mention_position'.
     'index' is a counter for each mention in each document
     'mention_position' is the index in a [0,1] interval (0 is the first, 1 is the last).
-    :param mention_info: the mention information dictionary. Must have the 'id' key and ordered by document
-    :return: the same mention_info object
+    :param mentions: list of all mentions
+    :return: the same list of input, with objects changed
     """
     doc_count = '0'
     count = 0
     i = 0
     mentions_in_each_doc = []
-    for m in mention_info:
-        if m['id'].split('_')[0] == doc_count:  # Keep counting while it's the same doc
+    for m in mentions:
+        if m.doc_id == doc_count:  # Keep counting while it's the same doc
             count += 1
         else:
             mentions_in_each_doc.append(count)  # save the counter
-            doc_count = m['id'].split('_')[0]
+            doc_count = m.doc_id
             count = 1
-        m['index'] = count
+        m.index = count
     mentions_in_each_doc.append(count)  # save last counter
-    doc_count = '0'
-    for m in mention_info:
-        if m['id'].split('_')[0] == doc_count:
-            m['mention_position'] = m['index'] / mentions_in_each_doc[i]
-        else:
-            doc_count = m['id'].split('_')[0]
-            i += 1
-            m['mention_position'] = m['index'] / mentions_in_each_doc[i]
 
-    return mention_info
+    # Now will transform into [0,1]
+    doc_count = '0'
+    for m in mentions:
+        if m.doc_id == doc_count:
+            m.mention_position = m.index / mentions_in_each_doc[i]
+        else:
+            doc_count = m.doc_id
+            i += 1
+            m.mention_position = m.index / mentions_in_each_doc[i]
+
+    return mentions

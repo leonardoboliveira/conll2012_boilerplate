@@ -3,6 +3,15 @@ import string
 import numpy as np
 
 
+class Features:
+    def __init__(self, mention_avg, antecedent_avg, mention_features, antecedent_features, pair_features):
+        self.mention_avg = mention_avg
+        self.antecedent_avg = antecedent_avg
+        self.mention_features = mention_features
+        self.antecedent_features = antecedent_features
+        self.pair_features = pair_features
+
+
 class FeatureMapper:
     def __init__(self, word2vec, train_list):
         """
@@ -15,15 +24,6 @@ class FeatureMapper:
         # Used to remove punctuation of the words
         self.table = str.maketrans({key: None for key in string.punctuation})
         self.doc_dict = get_documents(train_list)
-
-    def make_vectors(self, pairs):
-        """
-        This is the main method. Other implementations should replace this.
-        From a mention pair list, it returns the input and output vectors that will be fed into the net
-        :param pairs:
-        :return: input_vector,output_vector
-        """
-        return self.make_input_vector(pairs), self.make_output_vector()
 
     def get_vector(self, word):
         """
@@ -65,20 +65,6 @@ class FeatureMapper:
             doc_avg.append(self.get_average_vector(self.doc_dict[d].split()))
         return doc_avg
 
-    @staticmethod
-    def make_output_vector(pairs):
-        """
-        Buils the output vector from the mentions pairs
-        :param pairs:
-        :return: np.array(len(pairs),1)
-        """
-        output = []
-        len_mentions = len(pairs)
-        for m in pairs:
-            output.append(m[2]['coref'])
-        output = np.array(output).reshape((len_mentions, 1))
-        return output
-
     def make_input_vector(self, pairs):
         """
         Builds the input feature vector from the mention pairs
@@ -87,9 +73,9 @@ class FeatureMapper:
         """
         docs_avg = self.calculate_docs_average()
         input_feature_list = []
-        for m in pairs:
+        for p in pairs:
             # Build a list of lists (each list is a group of features)
-            input_feature_vector = self.make_pair_feature(docs_avg, m)
+            input_feature_vector = self.make_pair_feature(docs_avg, p)
             # Merge everithing into one vector
             input_feature_vector = np.concatenate(input_feature_vector)
             # Saves into a list
@@ -97,11 +83,11 @@ class FeatureMapper:
 
         return input_feature_list
 
-    def make_pair_feature(self, docs_avg, m):
+    def make_pair_feature(self, docs_avg, pair):
         """
         Builds the features for one pair
         :param docs_avg: word average vector for all documents
-        :param m: mention pair
+        :param pair: mention pair
         :return: list of list of features. There are 5 groups (each one in a position of the vector):
             - antecedent avg
             - antecedent features
@@ -109,21 +95,13 @@ class FeatureMapper:
             - mention features
             - pair features
         """
-        input_feature_vector = []
+        mention_avg = self.get_average_vector(pair.mention1.words)
+        antecedent_avg = self.get_average_vector(pair.mention2.words)
+        mention_features = self.get_mention_features(pair.mention1, docs_avg)
+        antecedent_features = self.get_mention_features(pair.mention2, docs_avg)
+        pair_features = get_pair_features(pair)
 
-        mention_avg = self.get_average_vector(m[0]['mention'].split())
-        antecedent_avg = self.get_average_vector(m[1]['mention'].split())
-        mention_features = self.get_mention_features(m[0], docs_avg)
-        antecedent_features = self.get_mention_features(m[1], docs_avg)
-        pair_features = get_pair_features(m)
-
-        # This order will be passed to the network afterwards
-        input_feature_vector.append(antecedent_avg)
-        input_feature_vector.append(antecedent_features)
-        input_feature_vector.append(mention_avg)
-        input_feature_vector.append(mention_features)
-        input_feature_vector.append(pair_features)
-        return input_feature_vector
+        return Features(mention_avg, antecedent_avg, mention_features, antecedent_features, pair_features)
 
     def get_mention_features(self, mention, doc_average):
         """
@@ -132,29 +110,29 @@ class FeatureMapper:
         :param doc_average: list of document average word
         :return: np.array with all features for that mention
         """
-        mention_length = self.get_vector(mention['mention_length'])
-        mention_type = np.array(mention['mention_type']).reshape((4, 1))
-        mention_position = np.array(mention['mention_position']).reshape((1, 1))
+        mention_length = self.get_vector(mention.mention_length)
+        mention_type = np.array(mention.mention_type).reshape((4, 1))
+        mention_position = np.array(mention.mention_position).reshape((1, 1))
 
         # p: previous, n: next, w: words, a: average, s: sentence
-        first_w = self.get_vector(mention['first_word'])
-        last_w = self.get_vector(mention['last_word'])
+        first_w = self.get_vector(mention.first_word)
+        last_w = self.get_vector(mention.last_word)
 
         # Contained
-        mention_contain = np.ones((1, 1)) if mention['contained'] else np.zeros((1, 1))
+        mention_contain = np.ones((1, 1)) if mention.contained else np.zeros((1, 1))
         # Previous words
-        mention_p_w1, mention_p_w2 = self.get_vector_if_both_defined(mention['pre_words'])
+        mention_p_w1, mention_p_w2 = self.get_vector_if_defined(mention.pre_words, [0, 1])
         # Next words
-        mention_n_w1, mention_n_w2 = self.get_vector_if_both_defined(mention['next_words'])
+        mention_n_w1, mention_n_w2 = self.get_vector_if_defined(mention.next_words, [0, 1])
         # Previous words Average
-        mention_p_w_a = self.get_average_vector(mention['pre_words'])
+        mention_p_w_a = self.get_average_vector(mention.pre_words)
         # Next words Average
-        mention_n_w_a = self.get_average_vector(mention['next_words'])
+        mention_n_w_a = self.get_average_vector(mention.next_words)
         # Mention Sentence Average
-        mention_s_a = self.get_average_vector(mention['mention_sentence'].split())
+        mention_s_a = self.get_average_vector(mention.words)
 
         # Extra info
-        doc_id = mention['id'].split('_')[0]
+        doc_id = mention.doc_id
         doc_avg = doc_average[int(doc_id)]
 
         features = np.concatenate((first_w, last_w, mention_p_w1, mention_p_w2, mention_p_w_a, mention_n_w1,
@@ -162,16 +140,40 @@ class FeatureMapper:
                                    mention_position, mention_contain, doc_avg))
         return features
 
-    def get_vector_if_both_defined(self, vector):
+    def get_vector_if_defined(self, word_list, indexes):
         """
-        Auxiliar function to get the word vector for the mention pair only if both are defined. Otherwise, defaults
-        to zero vector
-        :param vector:
-        :return:
+        Auxiliary function that returns the vector representation of the words in the corresponding indexes. If the
+        index is greater than the list length, returns a 0-vector
+        :param word_list: list of all words
+        :param indexes: list of indexes of the list to be used
+        :return: list of vectors that represents the words. Has the same length as the indexes list
         """
-        if len(vector) > 0:
-            return self.get_vector(vector[0]), self.get_vector(vector[1])
-        return np.zeros((50, 1)), np.zeros((50, 1))
+        output = []
+        for idx in indexes:
+            output.append(self.get_vector(word_list[idx]) if idx < len(word_list) else np.zeros((50, 1)))
+        return output
+
+
+def make_vectors(pairs, mapper=None):
+    """
+    This is the main method. Other implementations should replace this.
+    From a mention pair list, it returns the input and output vectors that will be fed into the net
+    :param pairs:
+    :return: input_vector,output_vector
+    """
+
+    return mapper.make_input_vector(pairs), make_output_vector(pairs)
+
+
+def make_output_vector(pairs):
+    """
+    Builds the output vector from the mentions pairs
+    :param pairs:
+    :return: np.array(len(pairs),1)
+    """
+    output = [p.coref + 0 for p in pairs]
+    output = np.array(output).reshape((len(output), 1))
+    return output
 
 
 def merge_document_text(documents):

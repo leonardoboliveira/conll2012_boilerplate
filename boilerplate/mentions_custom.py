@@ -5,37 +5,44 @@ from num2words import num2words
 nlp = None
 
 
-def increment_mention_pair(m, train_list):
+def increment_mention_pair(p, train_list):
+    """
+    Adds extra information about the mention pair
+    :param p: mention pair to be used
+    :param train_list: list of all lists in fhe file
+    """
     count = 0
-    m1 = m[0]['mention_start']
-    m2 = m[1]['mention_start']
+    m1 = p.mention1.mention_start
+    m2 = p.mention2.mention_start
     if m1 < m2:
         for t in range(m1, m2 + 1):
             if train_list[t] == '\n':
                 count += 1
-    m.append({'sentence_dist_count': distance(count)})
+    p.sentence_dist_count = distance(count)
 
-    m.append({'mention_dist_count': distance(m[0]['index'] - m[1]['index'])})
-    m.append({'head_match': (m[1]['head_word'] == m[0]['head_word']) + 0})
+    p.mention_dist_count = distance(p.mention1.index - p.mention2.index)
+    p.head_match = p.mention1.head_word == p.mention2.head_word
 
 
-def increment_mention(mention_dict, mention_words):
+def increment_mention(mention):
     """
     Adding information about head word and mention type
-    :param mention_dict:
-    :param mention_words:
+    :param mention:
     :return: None
     """
+
+    mention_words = mention.words
+
     doc = nlp(mention_words)
     if mention_words.isdigit() or mention_words == 'its' or mention_words.lower() == 'that' or mention_words.lower() == 'this':
-        mention_dict['head_word'] = ''
+        mention.head_word = ''
     else:
         if len(list(doc.noun_chunks)) > 0:
-            mention_dict['head_word'] = list(doc.noun_chunks)[0].root.head.text
+            mention.head_word = list(doc.noun_chunks)[0].root.head.text
         else:
-            mention_dict['head_word'] = ''
-    mention_dict['mention_type'] = mention_type(doc, mention_words).tolist()
-    mention_dict['mention_length'] = get_mention_length(mention_words)
+            mention.head_word = ''
+    mention.mention_type = mention_type(doc, mention_words).tolist()
+    mention.mention_length = get_mention_length(mention_words)
 
 
 def get_mention_length(mention_words):
