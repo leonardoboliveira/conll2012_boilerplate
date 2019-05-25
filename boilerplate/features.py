@@ -16,6 +16,15 @@ class FeatureMapper:
         self.table = str.maketrans({key: None for key in string.punctuation})
         self.doc_dict = get_documents(train_list)
 
+    def make_vectors(self, pairs):
+        """
+        This is the main method. Other implementations should replace this.
+        From a mention pair list, it returns the input and output vectors that will be fed into the net
+        :param pairs:
+        :return: input_vector,output_vector
+        """
+        return self.make_input_vector(pairs), self.make_output_vector()
+
     def get_vector(self, word):
         """
         Transforms the word into a vector of 50 positions. It will use the model of the class. If the word is not found,
