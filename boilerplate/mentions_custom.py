@@ -1,8 +1,14 @@
 import numpy as np
+import spacy
 from num2words import num2words
 
-# nlp = spacy.load('en')
-nlp = None
+"""
+This module uses spaCy en model. If you get an error, 
+run python -m download en
+
+More info in  https://spacy.io/usage
+"""
+nlp = spacy.load('en_core_web_sm')
 
 
 def increment_mention_pair(p, train_list):
@@ -31,10 +37,13 @@ def increment_mention(mention):
     :return: None
     """
 
-    mention_words = mention.words
+    mention_words = mention.mention
 
     doc = nlp(mention_words)
-    if mention_words.isdigit() or mention_words == 'its' or mention_words.lower() == 'that' or mention_words.lower() == 'this':
+    if mention_words.isdigit() \
+            or mention_words == 'its' \
+            or mention_words.lower() == 'that' \
+            or mention_words.lower() == 'this':
         mention.head_word = ''
     else:
         if len(list(doc.noun_chunks)) > 0:
@@ -85,7 +94,12 @@ def mention_type(doc, mention):
 
 
 def distance(a):
-    d = np.zeros((10))
+    """
+    Represents a distance as a vector
+    :param a:
+    :return: a vector with 10 positions
+    """
+    d = np.zeros(10)
     d[a == 0, 0] = 1
     d[a == 1, 1] = 1
     d[a == 2, 2] = 1

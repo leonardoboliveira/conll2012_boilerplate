@@ -1,9 +1,16 @@
 import string
 
 import numpy as np
+from tqdm import tqdm
+
+__GLOVE_FILE_NAME__ = 'extra_files/glove.6B.50d.w2vformat.txt'
 
 
 class Features:
+    """
+    This class represents a list of features. In custom implementations it can be completely replaced
+    """
+
     def __init__(self, mention_avg, antecedent_avg, mention_features, antecedent_features, pair_features):
         self.mention_avg = mention_avg
         self.antecedent_avg = antecedent_avg
@@ -11,8 +18,22 @@ class Features:
         self.antecedent_features = antecedent_features
         self.pair_features = pair_features
 
+    def to_vector(self):
+        """
+        Transforms the current object into a vector. This must be consistent in all sets
+        :return:
+        """
+        return np.concatenate([self.mention_avg, self.antecedent_avg, self.mention_features, self.antecedent_features,
+                               self.pair_features])
+
 
 class FeatureMapper:
+    """
+        This class is used to map the words into vectors. Also has some extra methods for features used in this
+        implementation
+    """
+    _default_model = None
+
     def __init__(self, word2vec, train_list):
         """
         Creates a feature mapping using a word2vec dictionary. Originally designed to be used with GloVe. See
@@ -23,7 +44,19 @@ class FeatureMapper:
         self.model = word2vec
         # Used to remove punctuation of the words
         self.table = str.maketrans({key: None for key in string.punctuation})
-        self.doc_dict = get_documents(train_list)
+        self.doc_dict = document_dictionary(train_list)
+
+    @classmethod
+    def get_default_model(cls):
+        """
+        Creates the default model implementation based on the GloVe word2vector
+        :return:
+        """
+        if FeatureMapper._default_model is None:
+            import gensim
+            FeatureMapper._default_model = gensim.models.KeyedVectors.load_word2vec_format(__GLOVE_FILE_NAME__,
+                                                                                           binary=False)
+        return FeatureMapper._default_model
 
     def get_vector(self, word):
         """
@@ -50,6 +83,7 @@ class FeatureMapper:
         :return: np.array(50,1)
         """
         final_sum = np.zeros((50, 1))
+        i = 0
         for i in range(0, len(word_list)):
             final_sum += self.get_vector(word_list[i])
         average_vector = final_sum / (i + 1)
@@ -73,13 +107,11 @@ class FeatureMapper:
         """
         docs_avg = self.calculate_docs_average()
         input_feature_list = []
-        for p in pairs:
-            # Build a list of lists (each list is a group of features)
+        for p in tqdm(pairs, desc="features"):
+            # Build a Features object
             input_feature_vector = self.make_pair_feature(docs_avg, p)
-            # Merge everithing into one vector
-            input_feature_vector = np.concatenate(input_feature_vector)
-            # Saves into a list
-            input_feature_list.append(input_feature_vector)
+            # Saves into a list the vector representation
+            input_feature_list.append(input_feature_vector.to_vector())
 
         return input_feature_list
 
@@ -154,14 +186,17 @@ class FeatureMapper:
         return output
 
 
-def make_vectors(pairs, mapper=None):
+def make_vectors(pairs, mapper=None, train_list=None):
     """
     This is the main method. Other implementations should replace this.
     From a mention pair list, it returns the input and output vectors that will be fed into the net
     :param pairs:
+    :param mapper: Custom vector mapper, if not informed, will use default FeatureMapper
+    :param train_list: list of all files. necessary if no mapper is informed
     :return: input_vector,output_vector
     """
-
+    if mapper is None:
+        mapper = FeatureMapper(FeatureMapper.get_default_model(), train_list)
     return mapper.make_input_vector(pairs), make_output_vector(pairs)
 
 
@@ -223,19 +258,32 @@ def get_documents(train_list):
     return document
 
 
-def get_pair_features(feature_list):
+def get_pair_features(pair):
+    """
+    Builds a vector of features for this mention pair. Currently, it has the following features:
+    * mention distance
+    * sentence distance
+    * overlap
+    * speaker
+    * head match
+    * mention exact match
+    * mention partial match
+
+    :param pair:
+    :return: vector of doubles
+    """
     # distance features
-    mention_dist = np.array(feature_list[4]['mention_dist_count']).reshape((10, 1))
-    s_dist = np.array(feature_list[3]['sentence_dist_count']).reshape((10, 1))
-    overlap = np.array(feature_list[5]['overlap']).reshape((1, 1))
+    mention_dist = np.array(pair.mention_dist_count).reshape((10, 1))
+    s_dist = np.array(pair.sentence_dist_count).reshape((10, 1))
+    overlap = np.array(pair.overlap).reshape((1, 1))
 
     # speaker feature
-    speaker = np.array(feature_list[6]['speaker']).reshape((1, 1))
+    speaker = np.array(pair.speaker).reshape((1, 1))
 
     # string matching features
-    head_match = np.array(feature_list[7]['head_match']).reshape((1, 1))
-    mention_exact_match = np.array(feature_list[8]['mention_exact_match']).reshape((1, 1))
-    mention_partial_match = np.array(feature_list[9]['mention_partial_match']).reshape((1, 1))
+    head_match = np.array(pair.head_match).reshape((1, 1))
+    mention_exact_match = np.array(pair.mention_exact_match).reshape((1, 1))
+    mention_partial_match = np.array(pair.mention_partial_match).reshape((1, 1))
 
     pair_features = np.concatenate(
         (mention_dist, s_dist, overlap, speaker, head_match, mention_exact_match, mention_partial_match))

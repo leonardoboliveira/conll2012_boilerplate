@@ -1,6 +1,8 @@
 import difflib
 import re
 
+from tqdm import tqdm
+
 CONLL_DOC_ID_COLUMN = 0
 CONLL_PART_NUM_COLUMN = 1
 CONLL_WORD_SEQ = 2
@@ -15,20 +17,37 @@ CONLL_NAMED_COLUMN = 10
 
 
 class Mention:
-    def __init__(self, m_id, words):
+    """
+    This class represents a mention with all its features. It can be extended if more information is needed
+    """
+
+    def __init__(self, m_id, words, start_pos, end_pos):
         self.words = words
         self.mention_id = m_id
         self.doc_id = m_id.split('_')[0]
         self.mention = " ".join(words)
         self.first_word = words[0]
         self.last_word = words[-1]
+        self.start_pos = start_pos
+        self.end_pos = end_pos
 
 
 class MentionPair:
+    """
+    This class represents a pair of mentions. It can be extended if more information is needed
+    """
+
     def __init__(self, mention1, mention2):
         self.mention1 = mention1
         self.mention2 = mention2
         self.coref = mention1.mention_id == mention2.mention_id
+
+    def get_info_vector(self):
+        """
+        Return the information to enable the recovery of the original mention pair
+        :return: [start/end position for both mentions]
+        """
+        return [self.mention1.start_pos, self.mention1.end_pos, self.mention2.start_pos, self.mention2.end_pos]
 
 
 def check_usable_pairs(mention_list, i, j):
@@ -65,13 +84,14 @@ def get_mention_pairs(train_list, increment_mention_info=None, increment_mention
     """
     mention_list = build_mention_list(train_list, increment_mention_info)
     mention_pair_list = []
-    for i in range(1, len(mention_list)):
+    for i in tqdm(range(1, len(mention_list)), desc="mention pair"):
         for j in range(0, i):
             if use_pair(mention_list, i, j):
                 pair = MentionPair(mention_list[i], mention_list[j])
                 mention_pair_list.append(pair)
 
-    mention_pair_list = get_sentence_dist(mention_pair_list, train_list, increment_mention_pair)
+    # Adding extra info
+    mention_pair_list = add_extra_pair_info(mention_pair_list, train_list, increment_mention_pair)
 
     return mention_pair_list
 
@@ -87,11 +107,11 @@ def build_mention_list(train_list, fill_information=None):
     mentions = []
     cluster_start, start_pos, cluster_end, end_pos = get_mention(train_list)
     mention_cluster = create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos)
-    for m in mention_cluster:
+    for m in tqdm(mention_cluster, desc="mentions"):
         m_id, start_pos, end_pos = m
 
         mention_words = get_mention_words(train_list, start_pos, end_pos)
-        mention = Mention(m_id, mention_words)
+        mention = Mention(m_id, mention_words, start_pos, end_pos)
 
         mention.mention_start = start_pos
         mention.mention_end = end_pos
@@ -100,6 +120,7 @@ def build_mention_list(train_list, fill_information=None):
         mention.mention_sentence = mention_sentence(train_list, start_pos)
         mention.speaker = train_list[start_pos - 1].split()[CONLL_SPEAKER_COLUMN]
 
+        # This will allow external info to be added
         if fill_information:
             fill_information(mention)
 
@@ -111,7 +132,7 @@ def build_mention_list(train_list, fill_information=None):
     return mentions
 
 
-def get_sentence_dist(mention_pair_list, train_list, increment_mention_pair=None):
+def add_extra_pair_info(mention_pair_list, train_list, increment_mention_pair=None):
     """
     Adds distance information about the mention pairs.
     'overlap' : True (1) if the second element overlaps the first
@@ -192,6 +213,7 @@ def create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos):
     cluster_start_end_list = []
     for start, pos in zip(cluster_start, start_pos):  # Join ID and position
         cluster = [start, pos]
+        i = 0
         for i in range(len(cluster_end)):  # Search where is the closing parenthesis
             if cluster_end[i] == start:
                 cluster.append(end_pos[i])  # Found it. Add to the pairing
@@ -278,7 +300,6 @@ def mention_sentence(train_list, pos):
     """
     pos = pos - 1
     i = 1
-    start = 0
     end = 0
     while True:
         if train_list[pos - i] == '\n':

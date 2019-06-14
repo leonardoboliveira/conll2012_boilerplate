@@ -3,9 +3,9 @@ import unittest
 import numpy as np
 
 from boilerplate import features as f
-from boilerplate import loader as l
+from boilerplate.loader import train_file_to_list
 
-TEST_FILE = "cnn_0341.gold_conll"
+TEST_FILE = "./cnn_0341.gold_conll"
 
 
 class FeaturesTestCase(unittest.TestCase):
@@ -24,6 +24,9 @@ class FeaturesTestCase(unittest.TestCase):
             model[w] = v
 
         features = f.FeatureMapper(model, [])
+        # Testing behavior for empty list
+        features.get_average_vector([])
+        # Real testing here
         v = features.get_average_vector(words)
 
         # words 'doc' and 'one' are repeated
@@ -38,6 +41,12 @@ class FeaturesTestCase(unittest.TestCase):
         for i in range(i + 1, 50):
             self.assertEqual(0, v[i])
 
+    def test_calculate_docs_average(self):
+        features = f.FeatureMapper({}, train_file_to_list(TEST_FILE))
+
+        docs = features.calculate_docs_average()
+        self.assertEqual(1, len(docs))
+
     def test_get_vector(self):
         features = f.FeatureMapper({"teste": np.ones((50, 1))}, [])
 
@@ -48,12 +57,12 @@ class FeaturesTestCase(unittest.TestCase):
         self.assertEqual(50, (np.zeros((50, 1)) == v).sum())
 
     def test_get_documents(self):
-        docs = f.get_documents(l.train_file_to_list(TEST_FILE))
+        docs = f.get_documents(train_file_to_list(TEST_FILE))
         self.assertEqual(1, len(docs))
         self.assertEqual("A former FBI informant accused of being a double agent has been indicted. ", docs[0][0])
 
     def test_document_dictionary(self):
-        docs = f.document_dictionary(l.train_file_to_list(TEST_FILE))
+        docs = f.document_dictionary(train_file_to_list(TEST_FILE))
         self.assertEqual(1, len(docs))
         self.assertEqual(1710, len(docs[0]))
 

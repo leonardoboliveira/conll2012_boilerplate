@@ -5,14 +5,14 @@ from boilerplate import mentions as m
 
 class MentionsTestCase(unittest.TestCase):
     def setUp(self):
-        with open("cnn_0341.gold_conll") as f:
+        with open("./cnn_0341.gold_conll") as f:
             self.lines = f.readlines()
 
     def test_get_index(self):
-        m1 = m.Mention("0_7", ['a'])
-        m2 = m.Mention("0_3", ['a'])
-        m3 = m.Mention("0_5", ['a'])
-        m4 = m.Mention("1_4", ['a'])
+        m1 = m.Mention("0_7", ['a'], 1, 2)
+        m2 = m.Mention("0_3", ['a'], 3, 4)
+        m3 = m.Mention("0_5", ['a'], 5, 6)
+        m4 = m.Mention("1_4", ['a'], 7, 8)
 
         m.get_index([m1, m2, m3, m4])
 
@@ -49,6 +49,7 @@ class MentionsTestCase(unittest.TestCase):
         self.assertListEqual("A former FBI informant accused of being a double agent".split(),
                              m.get_mention_words(self.lines, 2, 11))
         self.assertListEqual("the grand jury indictment".split(), m.get_mention_words(self.lines, 196, 199))
+        print(" ".join(m.get_mention_words(self.lines, 121, 186)))
 
     def test_get_preceding_words(self):
         expected = ["the", "are", "Leung", "Katrina", "against"]
