@@ -32,3 +32,32 @@ python -m spacy download en
 
 #Running tests
 python -m unittest on root folder
+
+#Extending the framework
+There are at least three parts that can be extended in this framework:
+* mention data
+* mention pair data
+* features
+This extension is done by passing different methods to the <b>loader.trainfile_to_vectors</b>
+The file example.py shows how these methods can be passed and have a pointer to how to implement 
+custom code
+
+## Mention data
+Passing a method as the parameter increment_mention to the <b>loader.trainfile_to_vectors</b> will allow the user to 
+modify/add new attributes to the Mention class.
+This method receives a mention and has no return (it has to change the given instance).
+One example of this implementation is the method found in <b>mentions_custom.increment_mention</b>
+
+## Mention Pair data
+As the mention data, passing a method as parameter increment_mention_pair will allow the user to 
+change the mention pair. The method also only receives a MentionPair instance and the method should change the given 
+instance. An example is provided in <b>mentions_custom.increment_mention_pair</b>
+
+## Features
+As each algorithm will need its own set of features, this framework must provide a generic way to create features from 
+the mention pair. As long as the algorithm can work with a single vector of numbers for each example, the framework can
+help with this. 
+If the data is actually a tensor, one suggestion is to reshape it into a vector in this method and than make the reader
+algorithm reshape it back.
+The current implementation already gives a lot of features based on the the mentions and it may or may not be used by 
+users. The current implementation is the <b>features.make_vectors</b> method. 
