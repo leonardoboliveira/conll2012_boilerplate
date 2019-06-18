@@ -1,3 +1,7 @@
+"""
+This is an example of an algorithm tat reads the generated files and predicts somehow the outputs.
+In this mock it will use exactly the supervised output as the prediction
+"""
 from boilerplate.saver import Document
 
 

@@ -2,10 +2,12 @@ import unittest
 
 from boilerplate import mentions as m
 
+ROOT = "tests/"
+
 
 class MentionsTestCase(unittest.TestCase):
     def setUp(self):
-        with open("./cnn_0341.gold_conll") as f:
+        with open("{}/cnn_0341.gold_conll".format(ROOT)) as f:
             self.lines = f.readlines()
 
     def test_get_index(self):

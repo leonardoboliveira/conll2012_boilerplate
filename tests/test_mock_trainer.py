@@ -2,10 +2,10 @@ import unittest
 
 from boilerplate import mock_trainer
 
-ROOT = "."
+ROOT = "tests/"
 
 
-class MyTestCase(unittest.TestCase):
+class MockTrainerTestCase(unittest.TestCase):
     def test_create_mock(self):
         file_name, mock = mock_trainer.create_mock("{}/cnn_0341.gold_conll_in".format(ROOT),
                                                    "{}/cnn_0341.gold_conll_out".format(ROOT))

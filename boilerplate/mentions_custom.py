@@ -1,13 +1,18 @@
+"""
+This module is an example of a custom implementation for extending the mentions classes. It is not part of
+the main code and can be ignored.
+
+This module uses spaCy en model. If you get an error,
+run python -m download en
+
+More info in  https://spacy.io/usage
+
+"""
 import numpy as np
 import spacy
 from num2words import num2words
 
-"""
-This module uses spaCy en model. If you get an error, 
-run python -m download en
-
-More info in  https://spacy.io/usage
-"""
+# Loading spaCy
 nlp = spacy.load('en_core_web_sm')
 
 
@@ -40,10 +45,7 @@ def increment_mention(mention):
     mention_words = mention.mention
 
     doc = nlp(mention_words)
-    if mention_words.isdigit() \
-            or mention_words == 'its' \
-            or mention_words.lower() == 'that' \
-            or mention_words.lower() == 'this':
+    if mention_words.isdigit() or mention_words == 'its' or mention_words.lower() == 'that' or mention_words.lower() == 'this':
         mention.head_word = ''
     else:
         if len(list(doc.noun_chunks)) > 0:

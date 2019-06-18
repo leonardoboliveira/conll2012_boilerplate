@@ -8,14 +8,14 @@ from boilerplate import loader as ldr
 from boilerplate import mentions
 from boilerplate.mentions_custom import increment_mention, increment_mention_pair
 
-ROOT_PATH = "./"
+ROOT_PATH = "tests/"
 TEST_FILE = ROOT_PATH + "cnn_0341.gold_conll"
 
 
 class LoaderTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        features.__GLOVE_FILE_NAME__ = "../" + features.__GLOVE_FILE_NAME__
+        pass  # features.__GLOVE_FILE_NAME__ = "../" + features.__GLOVE_FILE_NAME__
 
     def test_append_mention_info(self):
         mention1 = mentions.Mention("0_0", ['x'], 1, 2)

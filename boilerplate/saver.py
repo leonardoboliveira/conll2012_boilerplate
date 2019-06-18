@@ -1,3 +1,8 @@
+"""
+
+This module is responsible for generating the output files for a given prediction. It will
+use the original files to keep the format compatible
+"""
 import os
 
 
@@ -58,6 +63,10 @@ class LineInfo:
 
 
 class Document:
+    """
+    Class representing a document and its mention clusters. This is the object that an algorithm should
+    generate to allow the framework to save it in the proper CoNLL format.
+    """
     def __init__(self, name):
         self.name = name
         # Each cluster is a dictionary that maps start -> end for each mention in that cluster. Start/end are the

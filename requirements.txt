@@ -2,3 +2,4 @@ numpy
 num2words
 spacy
 gensim
+tqdm

@@ -1,9 +1,15 @@
+"""
+This module will parse the files in the CoNLL format.
+The main function is trainfile_to_vectors
+
+"""
+
 import os
 import re
 
 from tqdm import tqdm
 
-import mentions
+from . import mentions
 
 
 def transform_conll_to_vectors(path_in, path_out, increment_mention, increment_mention_pair, make_vectors):
@@ -29,22 +35,6 @@ def transform_conll_to_vectors(path_in, path_out, increment_mention, increment_m
                 if len(v_in) > 0 and len(v_out) > 0:
                     save_to_file(v_in, path_out, file_name + "_in", doc_name)
                     save_to_file(v_out, path_out, file_name + "_out")
-
-
-def trainfile_to_vectors(path, increment_mention, increment_mention_pair, make_vectors):
-    """
-    Given one file, returns the input and output vectors to be passed to a learning algo
-    :param path: file path to be used
-    :param increment_mention: method to add information to the mention
-    :param increment_mention_pair: method to add information to the mention pair
-    :param make_vectors: method to build the vectors
-    :return: [input_vector, output_vector, document_name]
-    """
-    train_list = train_file_to_list(path)
-    pairs = mentions.get_mention_pairs(train_list, increment_mention, increment_mention_pair)
-    input_vector, output_vector = make_vectors(pairs, train_list=train_list)
-    input_vector = append_mention_info(pairs, input_vector)
-    return input_vector, output_vector, get_document_name(train_list)
 
 
 def train_file_to_list(file):
@@ -99,3 +89,19 @@ def get_document_name(train_list):
     name_re = re.compile(r".*\((.*)\).*")
     match = name_re.match(train_list[0])
     return match.group(1)
+
+
+def trainfile_to_vectors(path, increment_mention, increment_mention_pair, make_vectors):
+    """
+    Given one file, returns the input and output vectors to be passed to a learning algo
+    :param path: file path to be used
+    :param increment_mention: method to add information to the mention
+    :param increment_mention_pair: method to add information to the mention pair
+    :param make_vectors: method to build the vectors
+    :return: [input_vector, output_vector, document_name]
+    """
+    train_list = train_file_to_list(path)
+    pairs = mentions.get_mention_pairs(train_list, increment_mention, increment_mention_pair)
+    input_vector, output_vector = make_vectors(pairs, train_list=train_list)
+    input_vector = append_mention_info(pairs, input_vector)
+    return input_vector, output_vector, get_document_name(train_list)

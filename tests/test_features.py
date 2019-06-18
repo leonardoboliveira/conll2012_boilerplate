@@ -5,7 +5,8 @@ import numpy as np
 from boilerplate import features as f
 from boilerplate.loader import train_file_to_list
 
-TEST_FILE = "./cnn_0341.gold_conll"
+ROOT_PATH = "tests/"
+TEST_FILE = ROOT_PATH + "cnn_0341.gold_conll"
 
 
 class FeaturesTestCase(unittest.TestCase):

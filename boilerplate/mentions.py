@@ -1,3 +1,10 @@
+"""
+Mentions Module
+
+This module will handle the parse of the files and creation of a MentionsPair class that will be used to generate
+the output files.
+"""
+
 import difflib
 import re
 

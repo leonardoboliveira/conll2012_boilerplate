@@ -1,3 +1,9 @@
+"""
+This is an example of the implementation of a make_vectors functions. This functions is expected to receive a list of
+mention pairs and return two lists of vectors (input and output vectors, one entry for each pair).
+
+"""
+
 import string
 
 import numpy as np
@@ -186,20 +192,6 @@ class FeatureMapper:
         return output
 
 
-def make_vectors(pairs, mapper=None, train_list=None):
-    """
-    This is the main method. Other implementations should replace this.
-    From a mention pair list, it returns the input and output vectors that will be fed into the net
-    :param pairs:
-    :param mapper: Custom vector mapper, if not informed, will use default FeatureMapper
-    :param train_list: list of all files. necessary if no mapper is informed
-    :return: input_vector,output_vector
-    """
-    if mapper is None:
-        mapper = FeatureMapper(FeatureMapper.get_default_model(), train_list)
-    return mapper.make_input_vector(pairs), make_output_vector(pairs)
-
-
 def make_output_vector(pairs):
     """
     Builds the output vector from the mentions pairs
@@ -299,3 +291,17 @@ def document_dictionary(train_file):
     """
     documents = get_documents(train_file)
     return merge_document_text(documents)
+
+
+def make_vectors(pairs, mapper=None, train_list=None):
+    """
+    This is the main method. Other implementations should replace this.
+    From a mention pair list, it returns the input and output vectors that will be fed into the net
+    :param pairs:
+    :param mapper: Custom vector mapper, if not informed, will use default FeatureMapper
+    :param train_list: list of all files. necessary if no mapper is informed
+    :return: input_vector,output_vector
+    """
+    if mapper is None:
+        mapper = FeatureMapper(FeatureMapper.get_default_model(), train_list)
+    return mapper.make_input_vector(pairs), make_output_vector(pairs)
