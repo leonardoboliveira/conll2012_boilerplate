@@ -3,7 +3,7 @@ import re
 
 from tqdm import tqdm
 
-from . import mentions
+import mentions
 
 
 def transform_conll_to_vectors(path_in, path_out, increment_mention, increment_mention_pair, make_vectors):
