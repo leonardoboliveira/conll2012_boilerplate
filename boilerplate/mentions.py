@@ -76,34 +76,7 @@ def check_usable_pairs(mention_list, i, j):
     return True
 
 
-def get_mention_pairs(train_list, increment_mention_info=None, increment_mention_pair=None,
-                      use_pair=check_usable_pairs):
-    """
-    Builds a list of pair of mentions for the file. Each pair may or may not have a coreference. Each position
-    simulates an object with the first two positions being mentions and the following are dictionaries with extra
-    features
-
-    :param train_list: list of lines in the file
-    :param increment_mention_info: function to add more information to the mention
-    :param increment_mention_pair: function to add more information to the mention pair
-    :param use_pair: function to define if two mentions should be paired or not
-    :return: list of objects
-    """
-    mention_list = build_mention_list(train_list, increment_mention_info)
-    mention_pair_list = []
-    for i in tqdm(range(1, len(mention_list)), desc="mention pair"):
-        for j in range(0, i):
-            if use_pair(mention_list, i, j):
-                pair = MentionPair(mention_list[i], mention_list[j])
-                mention_pair_list.append(pair)
-
-    # Adding extra info
-    mention_pair_list = add_extra_pair_info(mention_pair_list, train_list, increment_mention_pair)
-
-    return mention_pair_list
-
-
-def build_mention_list(train_list, fill_information=None):
+def _build_mention_list(train_list, fill_information=None):
     """
     Build a list of dictionaries with the information about each mention. The mentions are not yet grouped
 
@@ -112,19 +85,20 @@ def build_mention_list(train_list, fill_information=None):
     :return:
     """
     mentions = []
-    cluster_start, start_pos, cluster_end, end_pos = get_mention(train_list)
-    mention_cluster = create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos)
+    cluster_start, start_pos, cluster_end, end_pos = _get_mention(train_list)
+    mention_cluster = _create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos)
     for m in tqdm(mention_cluster, desc="mentions"):
         m_id, start_pos, end_pos = m
 
-        mention_words = get_mention_words(train_list, start_pos, end_pos)
+        mention_words = _get_mention_words(train_list, start_pos, end_pos)
         mention = Mention(m_id, mention_words, start_pos, end_pos)
 
+        # Building features
         mention.mention_start = start_pos
         mention.mention_end = end_pos
-        mention.pre_words = get_preceding_words(train_list, start_pos)
-        mention.next_words = get_next_words(train_list, end_pos)
-        mention.mention_sentence = mention_sentence(train_list, start_pos)
+        mention.pre_words = _get_preceding_words(train_list, start_pos)
+        mention.next_words = _get_next_words(train_list, end_pos)
+        mention.mention_sentence = _mention_sentence(train_list, start_pos)
         mention.speaker = train_list[start_pos - 1].split()[CONLL_SPEAKER_COLUMN]
 
         # This will allow external info to be added
@@ -134,12 +108,12 @@ def build_mention_list(train_list, fill_information=None):
         mentions.append(mention)
 
     mentions = sorted(mentions, key=lambda k: k.mention_start)
-    mentions = check_mention_contain(mentions)
-    mentions = get_index(mentions)
+    mentions = _check_mention_contain(mentions)
+    mentions = _get_index(mentions)
     return mentions
 
 
-def add_extra_pair_info(mention_pair_list, train_list, increment_mention_pair=None):
+def _add_extra_pair_info(mention_pair_list, train_list, increment_mention_pair=None):
     """
     Adds distance information about the mention pairs.
     'overlap' : True (1) if the second element overlaps the first
@@ -167,7 +141,7 @@ def add_extra_pair_info(mention_pair_list, train_list, increment_mention_pair=No
     return mention_pair_list
 
 
-def get_mention(train_list):
+def _get_mention(train_list):
     """
     Creates four auxiliary lists with IDs and positions. These lists are not completely related to each other. It will
     simply gather the open/close parenthesis in the order it appears in the document.
@@ -203,7 +177,7 @@ def get_mention(train_list):
     return cluster_start, start_pos, cluster_end, end_pos
 
 
-def create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos):
+def _create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos):
     """
     Builds a list of mentions. One mention per item. The clusters are not yet grouped
      * First position is the id = [document_cluster]
@@ -231,7 +205,7 @@ def create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos):
     return cluster_start_end_list
 
 
-def get_mention_words(train_list, pos1, pos2):
+def _get_mention_words(train_list, pos1, pos2):
     """
     Gets the list of words between these lines
     :param train_list: lines of the document
@@ -246,7 +220,7 @@ def get_mention_words(train_list, pos1, pos2):
     return mention
 
 
-def get_preceding_words(train_list, pos, max_words=5):
+def _get_preceding_words(train_list, pos, max_words=5):
     """
     Get the previous max_words in the document (if they exists)
     :param train_list: list of lines
@@ -271,7 +245,7 @@ def get_preceding_words(train_list, pos, max_words=5):
     return word
 
 
-def get_next_words(train_list, pos, max_words=5):
+def _get_next_words(train_list, pos, max_words=5):
     """
     Get the next max_words in the document (if they exists)
     :param train_list: list of lines
@@ -298,12 +272,12 @@ def get_next_words(train_list, pos, max_words=5):
     return word
 
 
-def mention_sentence(train_list, pos):
+def _mention_sentence(train_list, pos):
     """
     Gets the sentence that contains the mention in this line
     :param train_list: list of lines
     :param pos: line of reference
-    :return:
+    :return: string with sentence
     """
     pos = pos - 1
     i = 1
@@ -318,6 +292,7 @@ def mention_sentence(train_list, pos):
         i += 1
     start += 2
     i = 1
+
     while True:
         if train_list[pos + i] == '\n':
             end = pos + i
@@ -326,11 +301,11 @@ def mention_sentence(train_list, pos):
             start = pos + i
             break
         i += 1
-    sentence = get_mention_words(train_list, start, end)
+    sentence = _get_mention_words(train_list, start, end)
     return " ".join(sentence)
 
 
-def check_mention_contain(mention_list):
+def _check_mention_contain(mention_list):
     """
     Adds information about mentions containing/overlapping other mentions. The difference between contain and overlap
     will be defined by the end position. In this context, overlapping is not reflexive.
@@ -367,7 +342,7 @@ def check_mention_contain(mention_list):
     return mention_list
 
 
-def get_index(mentions):
+def _get_index(mentions):
     """
     Adds the 'index' and 'mention_position'.
     'index' is a counter for each mention in each document
@@ -389,7 +364,7 @@ def get_index(mentions):
         m.index = count
     mentions_in_each_doc.append(count)  # save last counter
 
-    # Now will transform into [0,1]
+    # Now will transform into [0,1,...]
     doc_count = '0'
     for m in mentions:
         if m.doc_id == doc_count:
@@ -400,3 +375,30 @@ def get_index(mentions):
             m.mention_position = m.index / mentions_in_each_doc[i]
 
     return mentions
+
+
+def get_mention_pairs(train_list, increment_mention_info=None, increment_mention_pair=None,
+                      use_pair=check_usable_pairs):
+    """
+    Builds a list of pair of mentions for the file. Each pair may or may not have a coreference. Each position
+    simulates an object with the first two positions being mentions and the following are dictionaries with extra
+    features
+
+    :param train_list: list of lines in the file
+    :param increment_mention_info: function to add more information to the mention
+    :param increment_mention_pair: function to add more information to the mention pair
+    :param use_pair: function to define if two mentions should be paired or not
+    :return: list of objects
+    """
+    mention_list = _build_mention_list(train_list, increment_mention_info)
+    mention_pair_list = []
+    for i in tqdm(range(1, len(mention_list)), desc="mention pair"):
+        for j in range(0, i):
+            if use_pair(mention_list, i, j):
+                pair = MentionPair(mention_list[i], mention_list[j])
+                mention_pair_list.append(pair)
+
+    # Adding extra info
+    mention_pair_list = _add_extra_pair_info(mention_pair_list, train_list, increment_mention_pair)
+
+    return mention_pair_list

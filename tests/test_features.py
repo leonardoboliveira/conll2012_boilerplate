@@ -24,11 +24,11 @@ class FeaturesTestCase(unittest.TestCase):
             v[i] += 1
             model[w] = v
 
-        features = f.FeatureMapper(model, [])
+        features = f.FeatureMapper(mapper(model), [])
         # Testing behavior for empty list
-        features.get_average_vector([])
+        features._get_average_vector([])
         # Real testing here
-        v = features.get_average_vector(words)
+        v = features._get_average_vector(words)
 
         # words 'doc' and 'one' are repeated
         base = 1 / 8
@@ -43,27 +43,27 @@ class FeaturesTestCase(unittest.TestCase):
             self.assertEqual(0, v[i])
 
     def test_calculate_docs_average(self):
-        features = f.FeatureMapper({}, train_file_to_list(TEST_FILE))
+        features = f.FeatureMapper(mapper({}), train_file_to_list(TEST_FILE))
 
-        docs = features.calculate_docs_average()
+        docs = features._calculate_docs_average()
         self.assertEqual(1, len(docs))
 
     def test_get_vector(self):
-        features = f.FeatureMapper({"teste": np.ones((50, 1))}, [])
+        features = f.FeatureMapper(mapper({"teste": np.ones((50, 1))}), [])
 
-        v = features.get_vector("Teste.")
+        v = features._get_vector("Teste.")
         self.assertEqual(50, (np.ones((50, 1)) == v).sum())
 
-        v = features.get_vector("NOT_EXISTING")
+        v = features._get_vector("NOT_EXISTING")
         self.assertEqual(50, (np.zeros((50, 1)) == v).sum())
 
     def test_get_documents(self):
-        docs = f.get_documents(train_file_to_list(TEST_FILE))
+        docs = f._get_documents(train_file_to_list(TEST_FILE))
         self.assertEqual(1, len(docs))
         self.assertEqual("A former FBI informant accused of being a double agent has been indicted. ", docs[0][0])
 
     def test_document_dictionary(self):
-        docs = f.document_dictionary(train_file_to_list(TEST_FILE))
+        docs = f._document_dictionary(train_file_to_list(TEST_FILE))
         self.assertEqual(1, len(docs))
         self.assertEqual(1710, len(docs[0]))
 
@@ -72,7 +72,11 @@ class FeaturesTestCase(unittest.TestCase):
 
         expected = {0: "This is doc one. Line two doc one. ", 1: "This is other doc. Second Line "}
 
-        self.assertDictEqual(expected, f.merge_document_text(docs))
+        self.assertDictEqual(expected, f._merge_document_text(docs))
+
+
+def mapper(word_mapping):
+    return lambda x: word_mapping[x]
 
 
 if __name__ == '__main__':

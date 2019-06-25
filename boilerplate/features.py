@@ -9,8 +9,6 @@ import string
 import numpy as np
 from tqdm import tqdm
 
-__GLOVE_FILE_NAME__ = 'extra_files/glove.6B.50d.w2vformat.txt'
-
 
 class Features:
     """
@@ -38,71 +36,59 @@ class FeatureMapper:
         This class is used to map the words into vectors. Also has some extra methods for features used in this
         implementation
     """
-    _default_model = None
+    _nlp = None
+    VECTOR_SIZE = 50
 
     def __init__(self, word2vec, train_list):
         """
-        Creates a feature mapping using a word2vec dictionary. Originally designed to be used with GloVe. See
-        https://nlp.stanford.edu/projects/glove/ for more info.
-
-        :param word2vec: dictionary with <word,[vector of length 50]>
+        :param word2vec: function to map work to vector of length VECTOR_SIZE.
+        :param train_list: list of all lines in document
         """
-        self.model = word2vec
+        self.model = word2vec if word2vec is not None else {}
+
         # Used to remove punctuation of the words
         self.table = str.maketrans({key: None for key in string.punctuation})
-        self.doc_dict = document_dictionary(train_list)
+        self.doc_dict = _document_dictionary(train_list)
 
-    @classmethod
-    def get_default_model(cls):
+    def _get_vector(self, word):
         """
-        Creates the default model implementation based on the GloVe word2vector
-        :return:
-        """
-        if FeatureMapper._default_model is None:
-            import gensim
-            FeatureMapper._default_model = gensim.models.KeyedVectors.load_word2vec_format(__GLOVE_FILE_NAME__,
-                                                                                           binary=False)
-        return FeatureMapper._default_model
-
-    def get_vector(self, word):
-        """
-        Transforms the word into a vector of 50 positions. It will use the model of the class. If the word is not found,
+        Transforms the word into a vector of VECTOR_SIZE positions. It will use the model of the class. If the word is not found,
         a 0 vector will be returned. Punctuations are removed
         :param word:
-        :return: np.array(50,1)
+        :return: np.array(VECTOR_SIZE,1)
         """
         word = word.lower()
         if len(word) > 1:
             word = word.translate(self.table)  # This will remove punctuation
 
         try:  # "easier to ask for forgiveness than permission
-            vec = self.model[word]
+            vec = self.model(word)
         except KeyError:
-            vec = np.zeros((50, 1))
+            vec = np.zeros((self.VECTOR_SIZE, 1))
 
-        return vec.reshape((50, 1))
+        return vec.reshape((self.VECTOR_SIZE, 1))
 
-    def get_average_vector(self, word_list):
+    def _get_average_vector(self, word_list):
         """
         Averages all the words in the list. Each word will be translated into a vector first
         :param word_list:
-        :return: np.array(50,1)
+        :return: np.array(VECTOR_SIZE,1)
         """
-        final_sum = np.zeros((50, 1))
+        final_sum = np.zeros((self.VECTOR_SIZE, 1))
         i = 0
         for i in range(0, len(word_list)):
-            final_sum += self.get_vector(word_list[i])
+            final_sum += self._get_vector(word_list[i])
         average_vector = final_sum / (i + 1)
         return average_vector
 
-    def calculate_docs_average(self):
+    def _calculate_docs_average(self):
         """
         Using the document dictionary of the class and the model, averages all words in each document
         :return: list of all averages (same order as the document dictionary)
         """
         doc_avg = []
         for d in self.doc_dict:
-            doc_avg.append(self.get_average_vector(self.doc_dict[d].split()))
+            doc_avg.append(self._get_average_vector(self.doc_dict[d].split()))
         return doc_avg
 
     def make_input_vector(self, pairs):
@@ -111,17 +97,17 @@ class FeatureMapper:
         :param pairs: mention pais
         :return: np.array of all features (one line per pair)
         """
-        docs_avg = self.calculate_docs_average()
+        docs_avg = self._calculate_docs_average()
         input_feature_list = []
         for p in tqdm(pairs, desc="features"):
             # Build a Features object
-            input_feature_vector = self.make_pair_feature(docs_avg, p)
+            input_feature_vector = self._make_pair_feature(docs_avg, p)
             # Saves into a list the vector representation
             input_feature_list.append(input_feature_vector.to_vector())
 
         return input_feature_list
 
-    def make_pair_feature(self, docs_avg, pair):
+    def _make_pair_feature(self, docs_avg, pair):
         """
         Builds the features for one pair
         :param docs_avg: word average vector for all documents
@@ -133,41 +119,41 @@ class FeatureMapper:
             - mention features
             - pair features
         """
-        mention_avg = self.get_average_vector(pair.mention1.words)
-        antecedent_avg = self.get_average_vector(pair.mention2.words)
-        mention_features = self.get_mention_features(pair.mention1, docs_avg)
-        antecedent_features = self.get_mention_features(pair.mention2, docs_avg)
-        pair_features = get_pair_features(pair)
+        mention_avg = self._get_average_vector(pair.mention1.words)
+        antecedent_avg = self._get_average_vector(pair.mention2.words)
+        mention_features = self._get_mention_features(pair.mention1, docs_avg)
+        antecedent_features = self._get_mention_features(pair.mention2, docs_avg)
+        pair_features = _get_pair_features(pair)
 
         return Features(mention_avg, antecedent_avg, mention_features, antecedent_features, pair_features)
 
-    def get_mention_features(self, mention, doc_average):
+    def _get_mention_features(self, mention, doc_average):
         """
         Buils a vector with all the features of a single mention
         :param mention:
         :param doc_average: list of document average word
         :return: np.array with all features for that mention
         """
-        mention_length = self.get_vector(mention.mention_length)
+        mention_length = self._get_vector(mention.mention_length)
         mention_type = np.array(mention.mention_type).reshape((4, 1))
         mention_position = np.array(mention.mention_position).reshape((1, 1))
 
         # p: previous, n: next, w: words, a: average, s: sentence
-        first_w = self.get_vector(mention.first_word)
-        last_w = self.get_vector(mention.last_word)
+        first_w = self._get_vector(mention.first_word)
+        last_w = self._get_vector(mention.last_word)
 
         # Contained
         mention_contain = np.ones((1, 1)) if mention.contained else np.zeros((1, 1))
         # Previous words
-        mention_p_w1, mention_p_w2 = self.get_vector_if_defined(mention.pre_words, [0, 1])
+        mention_p_w1, mention_p_w2 = self._get_vector_if_defined(mention.pre_words, [0, 1])
         # Next words
-        mention_n_w1, mention_n_w2 = self.get_vector_if_defined(mention.next_words, [0, 1])
+        mention_n_w1, mention_n_w2 = self._get_vector_if_defined(mention.next_words, [0, 1])
         # Previous words Average
-        mention_p_w_a = self.get_average_vector(mention.pre_words)
+        mention_p_w_a = self._get_average_vector(mention.pre_words)
         # Next words Average
-        mention_n_w_a = self.get_average_vector(mention.next_words)
+        mention_n_w_a = self._get_average_vector(mention.next_words)
         # Mention Sentence Average
-        mention_s_a = self.get_average_vector(mention.words)
+        mention_s_a = self._get_average_vector(mention.words)
 
         # Extra info
         doc_id = mention.doc_id
@@ -178,7 +164,7 @@ class FeatureMapper:
                                    mention_position, mention_contain, doc_avg))
         return features
 
-    def get_vector_if_defined(self, word_list, indexes):
+    def _get_vector_if_defined(self, word_list, indexes):
         """
         Auxiliary function that returns the vector representation of the words in the corresponding indexes. If the
         index is greater than the list length, returns a 0-vector
@@ -188,7 +174,7 @@ class FeatureMapper:
         """
         output = []
         for idx in indexes:
-            output.append(self.get_vector(word_list[idx]) if idx < len(word_list) else np.zeros((50, 1)))
+            output.append(self._get_vector(word_list[idx]) if idx < len(word_list) else np.zeros((self.VECTOR_SIZE, 1)))
         return output
 
 
@@ -203,7 +189,7 @@ def make_output_vector(pairs):
     return output
 
 
-def merge_document_text(documents):
+def _merge_document_text(documents):
     """
     Merges all the text of a document into one key
     :param documents: list of list of lines. Outer list are the documents, inner lists are the lines for the document
@@ -221,7 +207,7 @@ def merge_document_text(documents):
     return output
 
 
-def get_documents(train_list):
+def _get_documents(train_list):
     """
     :param train_list: list of all lines in the conll file (raw info)
     :return: list of list of sentences. Each outer list represents a document, each inner list is a sentence in the
@@ -250,7 +236,7 @@ def get_documents(train_list):
     return document
 
 
-def get_pair_features(pair):
+def _get_pair_features(pair):
     """
     Builds a vector of features for this mention pair. Currently, it has the following features:
     * mention distance
@@ -283,14 +269,31 @@ def get_pair_features(pair):
     return pair_features
 
 
-def document_dictionary(train_file):
+def _document_dictionary(train_file):
     """
     Transforms the list lines of the file into a dictionary with document and text
     :param train_file: list of lines in the document
     :return: dicionary {id: text}
     """
-    documents = get_documents(train_file)
-    return merge_document_text(documents)
+    documents = _get_documents(train_file)
+    return _merge_document_text(documents)
+
+
+def _map_word(nlp, word):
+    """
+    Auxiliar function to map word into a spacy vector
+    :param nlp: spacy loaded model
+    :param word: a work
+    :return: vector of word embedding
+    """
+    tokens = nlp(word)
+    if len(tokens) == 0:
+        raise KeyError()
+    token = tokens[0]
+    if not token.has_vector or token.is_oov:
+        raise KeyError()
+
+    return token.vector
 
 
 def make_vectors(pairs, mapper=None, train_list=None):
@@ -303,5 +306,8 @@ def make_vectors(pairs, mapper=None, train_list=None):
     :return: input_vector,output_vector
     """
     if mapper is None:
-        mapper = FeatureMapper(FeatureMapper.get_default_model(), train_list)
+        import spacy
+        nlp = spacy.load('en_core_web_lg')
+        mapper = FeatureMapper(lambda w: _map_word(nlp, w), train_list)
+        mapper.VECTOR_SIZE = 300
     return mapper.make_input_vector(pairs), make_output_vector(pairs)

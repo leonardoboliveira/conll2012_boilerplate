@@ -13,7 +13,7 @@ import spacy
 from num2words import num2words
 
 # Loading spaCy
-nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('en_core_web_lg')
 
 
 def increment_mention_pair(p, train_list):
@@ -29,9 +29,9 @@ def increment_mention_pair(p, train_list):
         for t in range(m1, m2 + 1):
             if train_list[t] == '\n':
                 count += 1
-    p.sentence_dist_count = distance(count)
+    p.sentence_dist_count = _distance(count)
 
-    p.mention_dist_count = distance(p.mention1.index - p.mention2.index)
+    p.mention_dist_count = _distance(p.mention1.index - p.mention2.index)
     p.head_match = p.mention1.head_word == p.mention2.head_word
 
 
@@ -52,11 +52,11 @@ def increment_mention(mention):
             mention.head_word = list(doc.noun_chunks)[0].root.head.text
         else:
             mention.head_word = ''
-    mention.mention_type = mention_type(doc, mention_words).tolist()
-    mention.mention_length = get_mention_length(mention_words)
+    mention.mention_type = _mention_type(doc, mention_words).tolist()
+    mention.mention_length = _get_mention_length(mention_words)
 
 
-def get_mention_length(mention_words):
+def _get_mention_length(mention_words):
     """
     Length of the mention in words (i.e. if the len(mention_words) is 2, returns "two"
     :param mention_words:
@@ -71,7 +71,17 @@ def get_mention_length(mention_words):
 # proper:  [0, 1, 0, 0]
 # nominal(common noun): [0, 0, 1, 0]
 # list:    [0, 0, 0, 1]
-def mention_type(doc, mention):
+def _mention_type(doc, mention):
+    """
+    Identifies the mention type
+    :param doc: the mention converted to tokens
+    :param mention: the mention as string
+    :return: one-hot identifier as this
+        * pronoun: [1, 0, 0, 0]
+        * proper:  [0, 1, 0, 0]
+        * nominal(common noun): [0, 0, 1, 0]
+        * list:    [0, 0, 0, 1]
+    """
     # pos 0: pronoun, pos 1: proper noun, pos 2: common noun
     token_type = [0, 0, 0]
     for token in doc:
@@ -95,7 +105,7 @@ def mention_type(doc, mention):
         return np.array([0, 0, 0, 1])
 
 
-def distance(a):
+def _distance(a):
     """
     Represents a distance as a vector
     :param a:

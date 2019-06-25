@@ -89,10 +89,10 @@ class Document:
 
         # Adding one operation for key and another for value
         for k, v in cluster.items():
-            self.add_operation(cluster_id, k, 1)
-            self.add_operation(cluster_id, v, -1)
+            self._add_operation(cluster_id, k, 1)
+            self._add_operation(cluster_id, v, -1)
 
-    def add_operation(self, cluster_id, line_number, operation):
+    def _add_operation(self, cluster_id, line_number, operation):
         """
         Adds a single operation to the line
         :param cluster_id: generic cluster id
@@ -105,7 +105,7 @@ class Document:
 
         self.line_info[line_number].add_operation(cluster_id, operation)
 
-    def get_line_operations(self, line_number):
+    def _get_line_operations(self, line_number):
         """
         Gets the operation for a given line number
         :param line_number:
@@ -140,19 +140,19 @@ def save_document(original_path, output_path, document):
     :param output_path:
     :param document: a Document object
     """
-    with open_original_file(original_path, document.name) as o:
-        with open_destination_file(output_path, document.name) as d:
+    with _open_original_file(original_path, document.name) as o:
+        with _open_destination_file(output_path, document.name) as d:
             counter = 0
             for line in o:
                 counter += 1
 
-                if write_as_is(line):  # Some lines are identical in both documents
+                if _write_as_is(line):  # Some lines are identical in both documents
                     d.write(line)
                 else:  # Others are simply the name and the open/close mention (or a dash)
-                    d.write(document.name + " " + document.get_line_operations(counter) + "\n")
+                    d.write(document.name + " " + document._get_line_operations(counter) + "\n")
 
 
-def open_original_file(original_path, name):
+def _open_original_file(original_path, name):
     """
     Opens (read) the gold_conll file associated with the given file
     :param original_path: root path (generally the 'annotation' folder)
@@ -162,7 +162,7 @@ def open_original_file(original_path, name):
     return open("{}/{}.gold_conll".format(original_path, name), "r", encoding="utf8")
 
 
-def open_destination_file(output_path, name):
+def _open_destination_file(output_path, name):
     """
     Opens (write) the file to be used as output. Will create any folder structe needed
 
@@ -178,7 +178,7 @@ def open_destination_file(output_path, name):
     return open("{}/{}.output".format(output_path, name), "w")
 
 
-def write_as_is(line):
+def _write_as_is(line):
     """
     Checks if a line should be copied to the final document.
     The header, footer and blank lines are the only ones in this case

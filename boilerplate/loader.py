@@ -33,8 +33,8 @@ def transform_conll_to_vectors(path_in, path_out, increment_mention, increment_m
                                                              increment_mention_pair, make_vectors)
 
                 if len(v_in) > 0 and len(v_out) > 0:
-                    save_to_file(v_in, path_out, file_name + "_in", doc_name)
-                    save_to_file(v_out, path_out, file_name + "_out")
+                    _save_to_file(v_in, path_out, file_name + "_in", doc_name)
+                    _save_to_file(v_out, path_out, file_name + "_out")
 
 
 def train_file_to_list(file):
@@ -46,7 +46,7 @@ def train_file_to_list(file):
         return f.readlines()
 
 
-def save_to_file(vector, path, file_name, doc_name=None):
+def _save_to_file(vector, path, file_name, doc_name=None):
     """
     Saves a vector into a file if the vector is not empty
     :param vector: list of lists of values. Can be numpy arrays
@@ -63,7 +63,7 @@ def save_to_file(vector, path, file_name, doc_name=None):
             f.write(",".join([str(i) for i in line]) + "\n")
 
 
-def append_mention_info(pairs, input_vectors):
+def _append_mention_info(pairs, input_vectors):
     """
     Append pair information into the vector to be saved in the disk
     :param pairs: list of mention pairs
@@ -80,7 +80,7 @@ def append_mention_info(pairs, input_vectors):
     return appended
 
 
-def get_document_name(train_list):
+def _get_document_name(train_list):
     """
     The the document name from the first line.
     :param train_list: list of all lines in the document
@@ -103,5 +103,5 @@ def trainfile_to_vectors(path, increment_mention, increment_mention_pair, make_v
     train_list = train_file_to_list(path)
     pairs = mentions.get_mention_pairs(train_list, increment_mention, increment_mention_pair)
     input_vector, output_vector = make_vectors(pairs, train_list=train_list)
-    input_vector = append_mention_info(pairs, input_vector)
-    return input_vector, output_vector, get_document_name(train_list)
+    input_vector = _append_mention_info(pairs, input_vector)
+    return input_vector, output_vector, _get_document_name(train_list)

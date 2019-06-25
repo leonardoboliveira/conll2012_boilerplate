@@ -28,7 +28,8 @@ dataset. If you are linked to a university, search for it. Maybe they already ha
 The default implementation uses <a href='https://spacy.io/'>spaCy</a> to extract some base information. Run the code 
 below once to download what is needed
   
-python -m spacy download en
+python -m spacy download en_core_web_lg
+
 
 #Running tests
 python -m unittest on root folder
@@ -61,3 +62,13 @@ If the data is actually a tensor, one suggestion is to reshape it into a vector 
 algorithm reshape it back.
 The current implementation already gives a lot of features based on the the mentions and it may or may not be used by 
 users. The current implementation is the <b>features.make_vectors</b> method. 
+
+# Saving predictions
+Once your program does a prediction for the CoNLL task, it must generate the output file in a speficir format so the 
+submission system can evaluate it. The program can be downloaded from 
+<a href="http://conll.cemantix.org/2012/download/submission/conll-2012-submissions.tar.gz">here</a>. 
+You can use the method saver.save_document to create this file.
+This method receives a saver.Document object. This object can be created by adding clusters to it. A cluster in this 
+representation is a map of start_line:end_line for each mention in the cluster. Add one map for each cluster.
+The method also receives the original path so it can build the file with line skipping and header/footer in the propper 
+format. The original file does not need the mention annotation.   

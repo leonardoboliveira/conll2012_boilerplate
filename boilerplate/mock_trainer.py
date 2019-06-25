@@ -14,11 +14,11 @@ def predict(file_name_x, file_name_y):
     :param file_name_y:  file name of the Y part of the information (supervised output)
     :return: a Document object
     """
-    file_name, clusters = create_mock(file_name_x, file_name_y)
-    return create_document(file_name, clusters)
+    file_name, clusters = _create_mock(file_name_x, file_name_y)
+    return _create_document(file_name, clusters)
 
 
-def create_mock(file_name_x, file_name_y):
+def _create_mock(file_name_x, file_name_y):
     """
     Gets the information in the files and build a structure that contains all mention coreferences
     based on the file name y
@@ -49,7 +49,7 @@ def create_mock(file_name_x, file_name_y):
     return original_file, corefs
 
 
-def create_document(file_name, mapping):
+def _create_document(file_name, mapping):
     """
     Creats a Document object based on the input
 

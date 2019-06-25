@@ -29,7 +29,7 @@ class LoaderTestCase(unittest.TestCase):
         pairs = [pair1, pair2]
         vectors = [np.array([[5], [6], [7]]), np.array([[1], [2], [3]])]
 
-        received = ldr.append_mention_info(pairs, vectors)
+        received = ldr._append_mention_info(pairs, vectors)
         expected = [[1, 2, 3, 4, 5, 6, 7], [5, 6, 7, 8, 1, 2, 3]]
 
         self.assertListEqual(expected, received)
@@ -40,13 +40,16 @@ class LoaderTestCase(unittest.TestCase):
         self.assertTrue(os.path.isfile(TEST_FILE + "_in"))
         self.assertTrue(os.path.isfile(TEST_FILE + "_out"))
 
+        os.unlink(TEST_FILE + "_in")
+        os.unlink(TEST_FILE + "_out")
+
     def test_train_file_to_list(self):
         lines = ldr.train_file_to_list(TEST_FILE)
         self.assertEqual(356, len(lines))
 
     def test_get_document_name(self):
         lines = ["#begin document (nw/dev_09_c2e/00/dev_09_c2e_0000); part 000"]
-        self.assertEqual("nw/dev_09_c2e/00/dev_09_c2e_0000", ldr.get_document_name(lines))
+        self.assertEqual("nw/dev_09_c2e/00/dev_09_c2e_0000", ldr._get_document_name(lines))
 
 
 if __name__ == '__main__':
