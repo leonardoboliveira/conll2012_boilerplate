@@ -30,6 +30,13 @@ below once to download what is needed
   
 python -m spacy download en_core_web_lg
 
+#Modeling
+The modules are related in the following fashion:
+![](imgs/modules.PNG)
+Although the examples.py files is not a real module, it shows how the examples group together to use the framework.
+
+The classes used are
+![](imgs/classes.png) 
 
 #Running tests
 python -m unittest on root folder

@@ -37,11 +37,11 @@ class LineInfo:
         into the CoNLL format for the mention coreference notation
         :return:
         """
-        per_cluster = [self.to_simple_oper(k, v) for k, v in self.operations.items()]
+        per_cluster = [self._to_simple_oper(k, v) for k, v in self.operations.items()]
         return "|".join(per_cluster)
 
     @staticmethod
-    def to_simple_oper(cluster_id, operation):
+    def _to_simple_oper(cluster_id, operation):
         """
         Translates the operation from number to string using open/close brackets.
         For example:

@@ -1,6 +1,6 @@
 import unittest
 
-import mentions_custom as mc
+import boilerplate.mentions_custom as mc
 
 
 class MyTestCase(unittest.TestCase):

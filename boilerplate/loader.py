@@ -12,6 +12,22 @@ from tqdm import tqdm
 from . import mentions
 
 
+def trainfile_to_vectors(path, increment_mention, increment_mention_pair, make_vectors):
+    """
+    Given one file, returns the input and output vectors to be passed to a learning algo
+    :param path: file path to be used
+    :param increment_mention: method to add information to the mention
+    :param increment_mention_pair: method to add information to the mention pair
+    :param make_vectors: method to build the vectors
+    :return: [input_vector, output_vector, document_name]
+    """
+    train_list = train_file_to_list(path)
+    pairs = mentions.get_mention_pairs(train_list, increment_mention, increment_mention_pair)
+    input_vector, output_vector = make_vectors(pairs, train_list=train_list)
+    input_vector = _append_mention_info(pairs, input_vector)
+    return input_vector, output_vector, _get_document_name(train_list)
+
+
 def transform_conll_to_vectors(path_in, path_out, increment_mention, increment_mention_pair, make_vectors):
     """
     Walks the input path looking for *_conll files. If any file is found, it is processed and two files are generated
@@ -89,19 +105,3 @@ def _get_document_name(train_list):
     name_re = re.compile(r".*\((.*)\).*")
     match = name_re.match(train_list[0])
     return match.group(1)
-
-
-def trainfile_to_vectors(path, increment_mention, increment_mention_pair, make_vectors):
-    """
-    Given one file, returns the input and output vectors to be passed to a learning algo
-    :param path: file path to be used
-    :param increment_mention: method to add information to the mention
-    :param increment_mention_pair: method to add information to the mention pair
-    :param make_vectors: method to build the vectors
-    :return: [input_vector, output_vector, document_name]
-    """
-    train_list = train_file_to_list(path)
-    pairs = mentions.get_mention_pairs(train_list, increment_mention, increment_mention_pair)
-    input_vector, output_vector = make_vectors(pairs, train_list=train_list)
-    input_vector = _append_mention_info(pairs, input_vector)
-    return input_vector, output_vector, _get_document_name(train_list)
