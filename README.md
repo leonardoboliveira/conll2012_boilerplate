@@ -24,13 +24,13 @@ To download this files you must register on <a href="htts://catalog.ldc.upenn.ed
 dataset. If you are linked to a university, search for it. Maybe they already have access. Use this 
 <a href="https://catalog.ldc.upenn.edu/LDC2013T19">link</a> to guide you.
 
-#Preparing spacy
+# Preparing spacy
 The default implementation uses <a href='https://spacy.io/'>spaCy</a> to extract some base information. Run the code 
 below once to download what is needed
   
 python -m spacy download en_core_web_lg
 
-#Modeling
+# Modeling
 The modules are related in the following fashion:
 ![](imgs/modules.PNG)
 Although the examples.py files is not a real module, it shows how the examples group together to use the framework.
@@ -38,10 +38,10 @@ Although the examples.py files is not a real module, it shows how the examples g
 The classes used are
 ![](imgs/classes.png) 
 
-#Running tests
+# Running tests
 python -m unittest on root folder
 
-#Extending the framework
+# Extending the framework
 There are at least three parts that can be extended in this framework:
 * mention data
 * mention pair data
