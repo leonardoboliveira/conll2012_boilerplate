@@ -207,7 +207,7 @@ def _merge_document_text(documents):
     return output
 
 
-def _get_documents(train_list):
+def _get_documents(train_list, split_ponctuation=True, return_names = False):
     """
     :param train_list: list of all lines in the conll file (raw info)
     :return: list of list of sentences. Each outer list represents a document, each inner list is a sentence in the
@@ -217,6 +217,7 @@ def _get_documents(train_list):
     document = []
     part = []
     sentence = ''
+    names = []
     for i in range(len(train_list)):
         if train_list[i] == '\n':  # On break lines,
             part.append(sentence)  # add the sentence to a paragraph
@@ -224,15 +225,22 @@ def _get_documents(train_list):
             continue
         cols = train_list[i].split()
         if cols[0] == '#begin' or cols[0] == '#end':  # Extremes of the document
+            if cols[0] == '#begin':
+                names.append(" ".join(cols[2:]))
+
             if len(part) > 0:
                 document.append(part)
                 part = []
             continue
         else:
-            if cols[3] == '\'s' or cols[3] == '.' or cols[3] == ',' or cols[3] == '?':
+            if split_ponctuation and (cols[3] == '\'s' or cols[3] == '.' or cols[3] == ',' or cols[3] == '?'):
                 sentence = sentence.strip() + cols[3] + ' '  # Adding punctuation to the previous sentence
             else:
                 sentence += cols[3] + ' '
+
+    if return_names:
+        return document, names
+
     return document
 
 

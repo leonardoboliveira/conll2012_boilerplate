@@ -67,7 +67,8 @@ class Document:
     Class representing a document and its mention clusters. This is the object that an algorithm should
     generate to allow the framework to save it in the proper CoNLL format.
     """
-    def __init__(self, name):
+
+    def __init__(self, name, first_line_idx):
         self.name = name
         # Each cluster is a dictionary that maps start -> end for each mention in that cluster. Start/end are the
         # original document line number
@@ -75,7 +76,7 @@ class Document:
 
         # Line number => line info
         self.line_info = {}
-
+        self.first_line_idx = first_line_idx
         self.next_line = 0
         self.next_line_generator = self._get_next_line()
 
@@ -88,9 +89,10 @@ class Document:
         cluster_id = len(self.clusters)
 
         # Adding one operation for key and another for value
-        for k, v in cluster.items():
-            self._add_operation(cluster_id, k, 1)
-            self._add_operation(cluster_id, v, -1)
+        for key, values in cluster.items():
+            self._add_operation(cluster_id, key, 1)
+            for v in values:
+                self._add_operation(cluster_id, v, -1)
 
     def _add_operation(self, cluster_id, line_number, operation):
         """
@@ -131,6 +133,9 @@ class Document:
         for line_number in sorted(self.line_info):
             yield line_number
 
+    def get_line(self, counter):
+        return self.name + " " + self._get_line_operations(counter - self.first_line_idx)
+
 
 def save_document(original_path, output_path, document):
     """
@@ -150,6 +155,37 @@ def save_document(original_path, output_path, document):
                     d.write(line)
                 else:  # Others are simply the name and the open/close mention (or a dash)
                     d.write(document.name + " " + document._get_line_operations(counter) + "\n")
+
+
+def save_documents(in_file, out_file, docs):
+    doc_iterator = iter(docs)
+    with open(in_file, "r") as entrada, open(out_file, "w") as saida:
+        counter = 0
+        current_doc = next(doc_iterator)
+        print(f"Writing doc {current_doc.name}")
+        next_doc = next(doc_iterator)
+
+        for line in entrada:
+            counter += 1
+            if _write_as_is(line):  # Some lines are identical in both documents
+                write(saida, line)
+            else:  # Others are simply the name and the open/close mention (or a dash)
+                if (next_doc is not None) and (next_doc.first_line_idx <= counter):
+                    current_doc = next_doc
+                    print(f"Writing doc {current_doc.name}")
+                    try:
+                        next_doc = next(doc_iterator)
+                        print("Moving to next document")
+                    except StopIteration:
+                        next_doc = None
+                        print("No more docs")
+
+                write(saida, current_doc.get_line(counter) + "\n")
+
+
+def write(file, line):
+    print(line)
+    file.write(line)
 
 
 def _open_original_file(original_path, name):

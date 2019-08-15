@@ -49,7 +49,7 @@ class LoaderTestCase(unittest.TestCase):
 
     def test_get_document_name(self):
         lines = ["#begin document (nw/dev_09_c2e/00/dev_09_c2e_0000); part 000"]
-        self.assertEqual("nw/dev_09_c2e/00/dev_09_c2e_0000", ldr._get_document_name(lines))
+        self.assertEqual("nw/dev_09_c2e/00/dev_09_c2e_0000", ldr.get_document_name(lines))
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ import re
 
 from tqdm import tqdm
 
-from . import mentions
+from boilerplate import mentions
 
 
 def trainfile_to_vectors(path, increment_mention, increment_mention_pair, make_vectors):
@@ -25,7 +25,21 @@ def trainfile_to_vectors(path, increment_mention, increment_mention_pair, make_v
     pairs = mentions.get_mention_pairs(train_list, increment_mention, increment_mention_pair)
     input_vector, output_vector = make_vectors(pairs, train_list=train_list)
     input_vector = _append_mention_info(pairs, input_vector)
-    return input_vector, output_vector, _get_document_name(train_list)
+    return input_vector, output_vector, get_document_name(train_list)
+
+
+def process_dir(path_in, path_out, callback):
+    with tqdm(os.walk(path_in), desc="folders")as pb:
+        for r, d, f in pb:
+            pb.set_description("folder:...{}".format(r[-20:]))
+            for file_name in tqdm(f, desc="files"):
+                if not file_name.endswith("_conll"):
+                    continue
+                v_in, v_out, doc_name = callback(os.path.join(r, file_name))
+
+                if len(v_in) > 0 and len(v_out) > 0:
+                    _save_to_file(v_in, path_out, file_name + "_in", doc_name)
+                    _save_to_file(v_out, path_out, file_name + "_out")
 
 
 def transform_conll_to_vectors(path_in, path_out, increment_mention, increment_mention_pair, make_vectors):
@@ -39,18 +53,9 @@ def transform_conll_to_vectors(path_in, path_out, increment_mention, increment_m
     :param increment_mention_pair: method to add information to the mention pair
     :param make_vectors: method to build the vectors
     """
-    with tqdm(os.walk(path_in), desc="folders")as pb:
-        for r, d, f in pb:
-            pb.set_description("folder:...{}".format(r[-20:]))
-            for file_name in tqdm(f, desc="files"):
-                if not file_name.endswith("_conll"):
-                    continue
-                v_in, v_out, doc_name = trainfile_to_vectors(os.path.join(r, file_name), increment_mention,
-                                                             increment_mention_pair, make_vectors)
 
-                if len(v_in) > 0 and len(v_out) > 0:
-                    _save_to_file(v_in, path_out, file_name + "_in", doc_name)
-                    _save_to_file(v_out, path_out, file_name + "_out")
+    process_dir(path_in, path_out,
+                lambda x: trainfile_to_vectors(x, increment_mention, increment_mention_pair, make_vectors))
 
 
 def train_file_to_list(file):
@@ -96,7 +101,7 @@ def _append_mention_info(pairs, input_vectors):
     return appended
 
 
-def _get_document_name(train_list):
+def get_document_name(train_list):
     """
     The the document name from the first line.
     :param train_list: list of all lines in the document

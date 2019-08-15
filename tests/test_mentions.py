@@ -31,7 +31,7 @@ class MentionsTestCase(unittest.TestCase):
         self.assertEqual("Reporter :", m._mention_sentence(self.lines, 52))
 
     def test_build_mention_list(self):
-        info = m._build_mention_list(self.lines)
+        info = m.build_mention_list(self.lines)
         self.assertEqual(48, len(info))
 
     def test_get_mention(self):
@@ -49,9 +49,9 @@ class MentionsTestCase(unittest.TestCase):
 
     def test_get_mention_words(self):
         self.assertListEqual("A former FBI informant accused of being a double agent".split(),
-                             m._get_mention_words(self.lines, 2, 11))
-        self.assertListEqual("the grand jury indictment".split(), m._get_mention_words(self.lines, 196, 199))
-        print(" ".join(m._get_mention_words(self.lines, 121, 186)))
+                             m.get_mention_words(self.lines, 2, 11))
+        self.assertListEqual("the grand jury indictment".split(), m.get_mention_words(self.lines, 196, 199))
+        print(" ".join(m.get_mention_words(self.lines, 121, 186)))
 
     def test_get_preceding_words(self):
         expected = ["the", "are", "Leung", "Katrina", "against"]

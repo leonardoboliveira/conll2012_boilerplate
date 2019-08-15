@@ -37,6 +37,22 @@ class Mention:
         self.last_word = words[-1]
         self.start_pos = start_pos
         self.end_pos = end_pos
+        self.seq_ids = {}
+
+    def compare(self, other):
+        start_diff = self.start_pos - other.start_pos
+        if start_diff != 0:
+            return start_diff
+        return self.end_pos - other.end_pos
+
+    def __str__(self):
+        return f"Mention ({self.doc_id},{self.start_pos},{self.end_pos})"
+
+    def set_seq_id(self, substructre_id, seq_id):
+        self.seq_ids[substructre_id] = seq_id
+
+    def get_seq_id(self, substructre_id):
+        return self.seq_ids[substructre_id]
 
 
 class MentionPair:
@@ -76,7 +92,7 @@ def check_usable_pairs(mention_list, i, j):
     return True
 
 
-def _build_mention_list(train_list, fill_information=None):
+def build_mention_list(train_list, fill_information=None):
     """
     Build a list of dictionaries with the information about each mention. The mentions are not yet grouped
 
@@ -90,7 +106,7 @@ def _build_mention_list(train_list, fill_information=None):
     for m in tqdm(mention_cluster, desc="mentions"):
         m_id, start_pos, end_pos = m
 
-        mention_words = _get_mention_words(train_list, start_pos, end_pos)
+        mention_words = get_mention_words(train_list, start_pos, end_pos)
         mention = Mention(m_id, mention_words, start_pos, end_pos)
 
         # Building features
@@ -205,7 +221,7 @@ def _create_mention_cluster_list(cluster_start, start_pos, cluster_end, end_pos)
     return cluster_start_end_list
 
 
-def _get_mention_words(train_list, pos1, pos2):
+def get_mention_words(train_list, pos1, pos2):
     """
     Gets the list of words between these lines
     :param train_list: lines of the document
@@ -301,7 +317,7 @@ def _mention_sentence(train_list, pos):
             start = pos + i
             break
         i += 1
-    sentence = _get_mention_words(train_list, start, end)
+    sentence = get_mention_words(train_list, start, end)
     return " ".join(sentence)
 
 
@@ -390,7 +406,7 @@ def get_mention_pairs(train_list, increment_mention_info=None, increment_mention
     :param use_pair: function to define if two mentions should be paired or not
     :return: list of objects
     """
-    mention_list = _build_mention_list(train_list, increment_mention_info)
+    mention_list = build_mention_list(train_list, increment_mention_info)
     mention_pair_list = []
     for i in tqdm(range(1, len(mention_list)), desc="mention pair"):
         for j in range(0, i):
